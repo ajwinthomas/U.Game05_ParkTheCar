@@ -5,9 +5,11 @@ public class CarController : MonoBehaviour
     private Rigidbody playerRB;
     public WheelColliders colliders;
     public WheelMeshes wheelMeshes;
+    public WheelParticles wheelParticles;
     public float gasInput;
     public float brakeInput;
     public float steeringInput;
+    public GameObject smokePrefab;
 
     public float motorPower;
     public float brakePower;
@@ -18,6 +20,7 @@ public class CarController : MonoBehaviour
     void Start()
     {
         playerRB = GetComponent<Rigidbody>();
+        InstantiateSmoke();
     }
 
     // Update is called once per frame
@@ -30,6 +33,19 @@ public class CarController : MonoBehaviour
         ApplyBrake();
         UpdateWheels();
         
+    }
+
+    // This fuction is to instantiate smoke effects of the wheels.
+    void InstantiateSmoke()
+    {
+        wheelParticles.FLWheel = Instantiate(smokePrefab,colliders.FLWheel.transform.position - Vector3.up * colliders.FLWheel.radius,Quaternion.identity , colliders.FLWheel.transform)
+            .GetComponent<ParticleSystem>();
+        wheelParticles.FRWheel = Instantiate(smokePrefab, colliders.FRWheel.transform.position - Vector3.up * colliders.FRWheel.radius, Quaternion.identity, colliders.FRWheel.transform)
+            .GetComponent<ParticleSystem>();
+        wheelParticles.RRWheel = Instantiate(smokePrefab, colliders.RRWheel.transform.position - Vector3.up * colliders.RRWheel.radius, Quaternion.identity, colliders.RRWheel.transform)
+            .GetComponent<ParticleSystem>();
+        wheelParticles.RLWheel = Instantiate(smokePrefab, colliders.RLWheel.transform.position - Vector3.up * colliders.RLWheel.radius, Quaternion.identity, colliders.RLWheel.transform)
+            .GetComponent<ParticleSystem>();
     }
 
 
@@ -91,6 +107,17 @@ public class CarController : MonoBehaviour
         UpdateWheel(colliders.RRWheel, wheelMeshes.RRWheel);
     }
 
+    void CheckParticles()
+    {
+        WheelHit[] wheelHits = new WheelHit[4];
+        colliders.FLWheel.GetGroundHit(out wheelHits[0]);
+        colliders.FRWheel.GetGroundHit(out wheelHits[1]);
+        colliders.RLWheel.GetGroundHit(out wheelHits[2]);
+        colliders.RRWheel.GetGroundHit(out wheelHits[3]);
+
+        //we need continue from here tommorrow. don't forget.
+    }
+
     void UpdateWheel(WheelCollider wheelColl,MeshRenderer wheelMesh)
     {
         //here what we are doing is getting the rotation and position of the wheelcollider and give it to the wheelmesh;
@@ -120,5 +147,16 @@ public class CarController : MonoBehaviour
         public MeshRenderer FLWheel;
         public MeshRenderer RRWheel;
         public MeshRenderer RLWheel;
+    }
+
+
+    //This custom class is store the partcle smoke effect for 4 wheels.
+    [System.Serializable]
+    public class  WheelParticles
+    {
+        public ParticleSystem FRWheel;
+        public ParticleSystem FLWheel;
+        public ParticleSystem RRWheel;
+        public ParticleSystem RLWheel;
     }
 }
