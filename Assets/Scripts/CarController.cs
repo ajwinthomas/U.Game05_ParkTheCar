@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 public class CarController : MonoBehaviour
@@ -15,6 +16,8 @@ public class CarController : MonoBehaviour
     public float brakePower;
     private float slipAngle;
     private float speed;
+    private float speedClamped; 
+    public float maxSpeed;
     public AnimationCurve steeringCurve;
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -26,13 +29,16 @@ public class CarController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        speed = playerRB.linearVelocity.magnitude;
+        speed = colliders.RRWheel.rpm * colliders.RRWheel.radius * 2f * Mathf.PI / 10;
+        speedClamped = Mathf.Lerp(speedClamped,speed,Time.deltaTime);
         CheckInput();
         ApplyMotor();
         ApplySteering();
         ApplyBrake();
+        CheckParticles();
         UpdateWheels();
         
+
     }
 
     // This fuction is to instantiate smoke effects of the wheels.
@@ -82,8 +88,17 @@ public class CarController : MonoBehaviour
     //thats how our car moves front or back.
     void ApplyMotor()
     {
-        colliders.RRWheel.motorTorque = motorPower * gasInput;
-        colliders.RLWheel.motorTorque = motorPower * steeringInput;
+
+        if(speed < maxSpeed)
+        {
+            colliders.RRWheel.motorTorque = motorPower * gasInput;
+            colliders.RLWheel.motorTorque = motorPower * steeringInput;
+        }
+        else
+        {
+            colliders.RRWheel.motorTorque = 0;
+            colliders.RLWheel.motorTorque = 0;
+        }
     }
 
 
@@ -94,6 +109,8 @@ public class CarController : MonoBehaviour
     void ApplySteering()
     {
         float steeringAngle = steeringInput * steeringCurve.Evaluate(speed);
+        steeringAngle += Vector3.SignedAngle(transform.forward, playerRB.linearVelocity + transform.forward, Vector3.up);
+        steeringAngle = Mathf.Clamp(steeringAngle, -90f, 90f);
         colliders.FLWheel.steerAngle = steeringAngle;
         colliders.FRWheel.steerAngle = steeringAngle;
     }
@@ -115,6 +132,49 @@ public class CarController : MonoBehaviour
         colliders.RLWheel.GetGroundHit(out wheelHits[2]);
         colliders.RRWheel.GetGroundHit(out wheelHits[3]);
 
+
+        float slipAllowance = 1f;
+
+        
+        //what we are doing here is we check each wheel is slipping .
+        //if it is slipping then we play the particle system of that wheel else we stop the particle system
+        if (Mathf.Abs(wheelHits[0].sidewaysSlip) + Mathf.Abs(wheelHits[0].forwardSlip)> slipAllowance)
+        {
+            wheelParticles.FLWheel.Play();
+        }
+        else
+        {
+            wheelParticles.FLWheel.Stop();
+            
+        }
+
+        if (Mathf.Abs(wheelHits[1].sidewaysSlip) + Mathf.Abs(wheelHits[1].forwardSlip) > slipAllowance)
+        {
+            wheelParticles.FRWheel.Play();
+        }
+        else
+        {
+            wheelParticles.FRWheel.Stop();
+        }
+
+        if (Mathf.Abs(wheelHits[2].sidewaysSlip) + Mathf.Abs(wheelHits[2].forwardSlip) > slipAllowance)
+        {
+            wheelParticles.RLWheel.Play();
+        }
+        else
+        {
+            wheelParticles.RLWheel.Stop();
+        }
+
+        if (Mathf.Abs(wheelHits[3].sidewaysSlip) + Mathf.Abs(wheelHits[3].forwardSlip) > slipAllowance)
+        {
+            wheelParticles.RRWheel.Play();
+        }
+        else
+        {
+            wheelParticles.RRWheel.Stop();
+        }
+
         //we need continue from here tommorrow. don't forget.
     }
 
@@ -126,6 +186,12 @@ public class CarController : MonoBehaviour
         wheelColl.GetWorldPose(out position, out quat);
         wheelMesh.transform.position = position;
         wheelMesh.transform.rotation = quat;
+    }
+
+    public float GetSpeedRatio()
+    {
+        var gas = Mathf.Clamp(gasInput, 0.5f, 1f);
+        return speedClamped * gas/maxSpeed;
     }
 
     //custom class we create to hold the reference of 4 wheel colliders.
